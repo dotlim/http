@@ -11,21 +11,11 @@ import type {
 
 interface PendingRequest {
   cancel: Canceler;
-  flag: number;
+  user: string;
 }
 
 const CancelToken = axios.CancelToken;
-const pending: PendingRequest[] = []; // 正在请求的接口
-const removeRepeatRequest = (payload: { user: string }, type?: string) => {
-  for (let i = 0; i < pending.length; i++) {
-    if (payload.user === "admin@test.com") {
-      if (type === "request") {
-        pending[i].cancel("Operation canceled by the user.");
-      }
-      pending.splice(i, 1);
-    }
-  }
-};
+const pendingPool = new Map<string | undefined, PendingRequest>(); // pending requests
 
 /**
  * HTTP request resolve interceptor
@@ -33,9 +23,12 @@ const removeRepeatRequest = (payload: { user: string }, type?: string) => {
  */
 function defaultReqResolveInterceptor(conf: AxiosRequestConfig) {
   // ...
-  removeRepeatRequest({ user: "admin@test.com" }, "request");
-  conf.cancelToken = new CancelToken((c) => {
-    pending.push({ flag: 10, cancel: c });
+  conf.cancelToken = new CancelToken((cancel) => {
+    if (pendingPool.has(conf.url)) {
+      cancel(`Operation canceled due to duplication.`);
+    } else {
+      pendingPool.set(conf.url, { cancel, user: "admin@test.com" });
+    }
   });
   return conf;
 }
@@ -47,6 +40,8 @@ function defaultReqResolveInterceptor(conf: AxiosRequestConfig) {
 function defaultResResolveInterceptor(res: AxiosResponse) {
   const data = res.data;
   const errCode = data["error-id"]; // 视接口而定
+
+  pendingPool.delete(res.config.url);
 
   if (errCode === 0) {
     return data;
@@ -62,6 +57,10 @@ function defaultResResolveInterceptor(res: AxiosResponse) {
  * @param err
  */
 function defaultResRejectInterceptor(err: AxiosError) {
+  if (!axios.isCancel(err)) {
+    pendingPool.delete(err.config.url);
+  }
+
   if (err) {
     return Promise.reject(err);
   }
@@ -107,16 +106,34 @@ class Http {
     return this.request("GET", url, { params }, prefix);
   }
 
-  post(url: string, data?: any, prefix?: string) {
-    return this.request("POST", url, { data }, prefix); // POST 不再支持自定义 querystring, 可以使用 qs.stringify 自定义，或使用 request 方法
+  post(url: string, data?: any, params?: any, prefix?: string) {
+    return this.request("POST", url, { data, params }, prefix);
   }
 
-  put(url: string, data?: any, prefix?: string) {
-    return this.request("PUT", url, { data }, prefix);
+  put(url: string, data?: any, params?: any, prefix?: string) {
+    return this.request("PUT", url, { data, params }, prefix);
+  }
+
+  patch(url: string, data?: any, params?: any, prefix?: string) {
+    return this.request("PATCH", url, { data, params }, prefix);
   }
 
   delete(url: string, params?: any, prefix?: string) {
     return this.request("DELETE", url, { params }, prefix);
+  }
+
+  getPendingRequest() {
+    return Array.from(pendingPool.keys());
+  }
+
+  clearPendingPool(whileList: string[] = []) {
+    if (pendingPool.size === 0) return;
+
+    for (let [url = "", request] of pendingPool.entries()) {
+      if (whileList.includes(url)) continue;
+      pendingPool.get(url)?.cancel();
+      pendingPool.delete(url);
+    }
   }
 }
 
