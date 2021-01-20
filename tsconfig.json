@@ -8,7 +8,7 @@
     "lib": ["ESNext", "DOM"],                             /* Specify library files to be included in the compilation. */
     // "jsx": "preserve",                     /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
     // "declaration": true,                   /* Generates corresponding '.d.ts' file. */
-    "outDir": "",                        /* Redirect output structure to the directory. */
+    "outDir": "lib",                        /* Redirect output structure to the directory. */
 
     /* Strict Type-Checking Options */
     "strict": true,                           /* Enable all strict type-checking options. */
