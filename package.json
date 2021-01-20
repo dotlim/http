@@ -1,6 +1,6 @@
 {
   "name": "@dotlim/http",
-  "version": "1.1.0",
+  "version": "1.1.0-alpha",
   "description": "业务常用HTTP方法封装",
   "main": "index.js",
   "scripts": {
