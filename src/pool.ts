@@ -6,11 +6,11 @@ import type { AxiosRequestConfig } from "axios";
 const REQUEST_PENDING_POOL = "_request_pending_pool_";
 
 export let pendingPool =
-  window[REQUEST_PENDING_POOL] || new Map<string, PendingRequest>(); // pending requests
+  (window as any)[REQUEST_PENDING_POOL] || new Map<string, PendingRequest>(); // pending requests
 export let localUser = "";
 
 // export to window
-window[REQUEST_PENDING_POOL] = pendingPool;
+(window as any)[REQUEST_PENDING_POOL] = pendingPool;
 
 /**
  * generate key for request pool
