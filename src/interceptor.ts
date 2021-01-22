@@ -24,11 +24,13 @@ export function defaultReqResolveInterceptor(conf: AxiosRequestConfig) {
   conf.cancelToken = new CancelToken((cancel) => {
     const reqKey = genReqKey(conf);
 
+    // cancel previous pending request if exist
     if (pendingPool.has(reqKey)) {
-      cancel(`Operation canceled due to duplication.`);
-    } else {
-      pendingPool.set(reqKey, { ...reservedRequest, cancel });
+      const existRequest = pendingPool.get(reqKey);
+      existRequest.cancel(`Operation canceled due to duplication.`);
     }
+    // cache request
+    pendingPool.set(reqKey, { ...reservedRequest, cancel });
   });
 
   return conf;
